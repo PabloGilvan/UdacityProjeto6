@@ -1,0 +1,87 @@
+---
+title: "Projeto - Red Wine"
+author: "Pablo Gilvan Borges - pablogilvan@gmail.com"
+date: "3/26/2018"
+output: html_document
+---
+# Projeto Red Wine 
+## Analisar e adawdawdawdaw
+### http://winefolly.com/review/the-science-behind-great-wine/
+### https://www.youtube.com/watch?v=uvWL6_A7uQc
+### https://www.youtube.com/watch?v=_UaS743_aEs
+### https://www.youtube.com/watch?v=PbHxphNDBlk
+
+```{r}
+library(tidyverse)
+library(gridExtra)
+```
+
+
+What???s interesting about the soil types listed above is that if you look at all the finest, most structured, age-worthy red wines, they almost all grow on clay-dominant soils 
+
+### Acidity
+
+Terms in figure: Brix is the measure of sweetness in grapes. pH, in this image, shows an estimated level of acidity in a resulting wine made with these grapes. pH is logarithmic and inversely related to acidity so, a wine with 3.5 pH has an acidity level 5 times higher than a wine with a pH of 4.
+
+### Carregando os dados
+```{r}
+wines <- read.csv('wineQualityReds.csv')
+```
+
+### Listando uma amostra dos dados
+```{r}
+head(wines)
+```
+
+#### Listando a quantidade de vinhos pela nota recebida
+```{r}
+## Usei um bin de 0.5 para ficar mais f??cil de visualizar os dados, visto que com bin 1 n??o ficava t??o claro.
+ggplot(data = wines, mapping = aes(x = quality))+
+  geom_histogram(binwidth = 0.5)+theme(aspect.ratio = 1)
+```
+
+Em minhas buscas sobre o que compoem um bom vinho, achei um artigo(2) que indica uma rela????o entre o n??vel de alcool e a do??ura do mesmo, mas isso n??o ?? um indicador de que o vinho ?? bom por ser doce, muitas pessoas podem pensar exatamente o oposto, tendem a n??o gostar de vinhos mais adocicados.
+O artigo constata que vinhos com um percentual de 13% s??o mais adocicados e alega que n??o possuem a??ucares residuais, vamos cruzar os dados de vinhos com um percentual de alcool de 13% ou mais com a quantidade de a??ucar redisual.
+```{r}
+g1 <- ggplot(data = filter(wines, wines$alcohol >= 13), mapping = aes(x = alcohol, y = residual.sugar))+
+        geom_point()+labs(x = NULL, y = NULL)
+
+g2 <- ggplot(data = filter(wines, wines$alcohol < 13), mapping = aes(x = alcohol, y = residual.sugar))+
+        geom_point( color="steelblue")+labs(x = NULL, y = NULL)
+
+#TODO: adicionar um 3 grafico com duas linhas, a media at?? o 13 e a media 
+
+grid.arrange(arrangeGrob(g1, g2, 
+                         top = textGrob("Nivel de alcool x Acucar residual", vjust = 1),
+                         left = textGrob("Acucar Residual", rot = 90, vjust = 0.5),
+                         bottom = textGrob("Alcool", hjust = 0.5)), nrow=1)
+```
+
+
+
+#### Vamos comparar a nota de cada vinho com a quantidade de alcool presente
+A ideia aqui ?? apresentar a quantidade m??xima, m??nima e a m??dia de alcool presente
+em vinhos por qualidade.
+```{r}
+
+# Com o stat_summary, para cada valor ??nico de x vou fazer um 'sum??rio' em y.
+ggplot(data = wines, mapping = aes(x = quality, y = alcohol))+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+```
+
+Podemos verificar que vinhos com notas mais altas s??o os que apresentam, tamb??m, m??dias mais altas de alcool.
+Note que vinhos com qualidade inferior tamb??m apresentam um valor de alcool inferior.
+Vamos validar este comportamento com um c??lculo de correla????o entre as duas vari??veis.
+
+### Validando a correla????o entre qualidade e ??ndice alc??lico.
+```{r}
+cor.test(x = wines$quality, y = wines$alcohol, method = "pearson")
+```
+
+Ok, podemos descartar que alcool, ao menos sozinho, tenha alguma relev??ncia significativa na qualidade final de um bom vinho, pois nosso indicador de correla????o marcou somente 0.47, um valor nada baixo, mas tamb??m nada t??o expressivo.
+
+
+
+
+
+
