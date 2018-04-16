@@ -7,9 +7,13 @@ output: html_document
 # Projeto Red Wine 
 ## Analisar e adawdawdawdaw
 ### http://winefolly.com/review/the-science-behind-great-wine/
+### http://revistaadega.uol.com.br/artigo/os-componentes-do-vinho-parte-1_5934.html
 ### https://www.youtube.com/watch?v=uvWL6_A7uQc
 ### https://www.youtube.com/watch?v=_UaS743_aEs
 ### https://www.youtube.com/watch?v=PbHxphNDBlk
+### http://winefolly.com/review/understanding-acidity-in-wine/
+### http://winefolly.com/review/wine-characteristics/
+
 
 ```{r}
 library(tidyverse)
@@ -80,7 +84,22 @@ cor.test(x = wines$quality, y = wines$alcohol, method = "pearson")
 
 Ok, podemos descartar que alcool, ao menos sozinho, tenha alguma relev??ncia significativa na qualidade final de um bom vinho, pois nosso indicador de correla????o marcou somente 0.47, um valor nada baixo, mas tamb??m nada t??o expressivo.
 
+Vamos ent??o validar se os n??veis de a??ucar residual possuem algum papel nesse resultado.
+```{r}
+ggplot(data = wines, mapping = aes(x = quality, y = residual.sugar))+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+```
 
+Podemos descarta esta ideia, visto que temos uma m??dia de n??vel residual de a??ucar quase id??ntica para cada grupo
+de qualidade.
+Lendo e estudando sobre este mundo de vinhos, acabo me deparando com a seguinte constata????o feita em um blog especializado em vinho:
+"As much as modern health has demonized acidic foods, acidity is an essential trait in wine that???s necessary for quality. Great wines are in balance with their 4 fundamental traits (Acidity, tannin, alcohol and sweetness) and as wines age, the acidity acts as a buffer to preserve the wine longer. For example, Sauternes, a wine with both high acidity and sweetness, is known to age several decades."
+
+Bom, segundo o que foi dito, vinhos de mais alta qualidade possuem n??veis elevados de acidez.
+```{r}
+ggplot(data = wines, mapping = aes(x = quality, y = citric.acid))+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+```
 
 
 
