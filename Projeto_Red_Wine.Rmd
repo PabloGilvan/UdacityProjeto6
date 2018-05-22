@@ -13,11 +13,13 @@ output: html_document
 ### https://www.youtube.com/watch?v=PbHxphNDBlk
 ### http://winefolly.com/review/understanding-acidity-in-wine/
 ### http://winefolly.com/review/wine-characteristics/
+### http://winefolly.com/review/understanding-wine-tech-sheets/
 
 
 ```{r}
 library(tidyverse)
 library(gridExtra)
+library(readr)
 ```
 
 
@@ -39,13 +41,35 @@ head(wines)
 
 #### Listando a quantidade de vinhos pela nota recebida
 ```{r}
-## Usei um bin de 0.5 para ficar mais f??cil de visualizar os dados, visto que com bin 1 n??o ficava t??o claro.
 ggplot(data = wines, mapping = aes(x = quality))+
-  geom_histogram(binwidth = 0.5)+theme(aspect.ratio = 1)
+  geom_bar()+theme(aspect.ratio = 1)
+```
+
+Ok, podemos ver que vinhos com notas 5 e 6 s??o a grande maioria. Mas qual a real propor????o da quantidade para cada nota.
+```{r}
+# Como vou querer usar boxplot, preciso converter a coluna Quality para o tipo 'factory'.
+wines$quality <- factor(wines$quality)
+
+#Vamos criar um novo conjunto de dados, onde vamos agrupar a quantidade de vinhos por qualidade
+quality_summary <- wines %>% count(quality)
+quality_summary
+
+# Ok, podemos perceber que os vinhos com qualidades 5 e 6 compoeem mais de 80% da nossa amostra. Vamos mostrar isso de forma proporcional.
+
+# Vamos dividir a quantidade de items de uma nota pela quantidade geral, assim teremos a propor????o de items para cada nota.
+quality_summary <- quality_summary %>%
+  mutate(prop_items = 100 * (n/sum(n)))
+
+quality_summary
+# Como j?? antecipado, a soma de vinhos de qualidade 5 e 6 chega a mais de 80%. Vinhos com qualidade inferior a 4 est??o em menor quantidade que vinhos de qualidade 8, que tamb??m possuem uma contagem bem baixa: 1.1% do total de vinhos.
+
+ggplot(data = quality_summary, mapping = aes(x = quality, y = prop_items, group = 1))+
+  geom_line()
 ```
 
 Em minhas buscas sobre o que compoem um bom vinho, achei um artigo(2) que indica uma rela????o entre o n??vel de alcool e a do??ura do mesmo, mas isso n??o ?? um indicador de que o vinho ?? bom por ser doce, muitas pessoas podem pensar exatamente o oposto, tendem a n??o gostar de vinhos mais adocicados.
 O artigo constata que vinhos com um percentual de 13% s??o mais adocicados e alega que n??o possuem a??ucares residuais, vamos cruzar os dados de vinhos com um percentual de alcool de 13% ou mais com a quantidade de a??ucar redisual.
+
 ```{r}
 g1 <- ggplot(data = filter(wines, wines$alcohol >= 13), mapping = aes(x = alcohol, y = residual.sugar))+
         geom_point()+labs(x = NULL, y = NULL)
@@ -53,41 +77,103 @@ g1 <- ggplot(data = filter(wines, wines$alcohol >= 13), mapping = aes(x = alcoho
 g2 <- ggplot(data = filter(wines, wines$alcohol < 13), mapping = aes(x = alcohol, y = residual.sugar))+
         geom_point( color="steelblue")+labs(x = NULL, y = NULL)
 
-#TODO: adicionar um 3 grafico com duas linhas, a media at?? o 13 e a media 
+g3 <- ggplot(data = wines, mapping = aes(x = alcohol, y = residual.sugar))+
+        geom_point( color="steelblue")+labs(x = NULL, y = NULL)
 
-grid.arrange(arrangeGrob(g1, g2, 
-                         top = textGrob("Nivel de alcool x Acucar residual", vjust = 1),
-                         left = textGrob("Acucar Residual", rot = 90, vjust = 0.5),
-                         bottom = textGrob("Alcool", hjust = 0.5)), nrow=1)
+grid.arrange(arrangeGrob(g1, g2, g3,
+                         top = "Nivel de alcool x Acucar residual",
+                         left = "Acucar Residual",
+                         bottom = "Alcool"), nrow=1)
 ```
-
-
 
 #### Vamos comparar a nota de cada vinho com a quantidade de alcool presente
 A ideia aqui ?? apresentar a quantidade m??xima, m??nima e a m??dia de alcool presente
 em vinhos por qualidade.
 ```{r}
-
 # Com o stat_summary, para cada valor ??nico de x vou fazer um 'sum??rio' em y.
+ggplot(data = wines, mapping = aes(x = quality, y = alcohol, group = 1))+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)+
+  geom_line(stat = 'summary', fun.y = mean)+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .1),
+            linetype = 2, color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .75),
+            linetype = 3, color =  'red')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .9),
+            linetype = 2, color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .25),
+            linetype = 3, color =  'red')
+
+# Primeiramente, com o stat_summary estou pedindo ao ggplot para exibir uma marca????o de onde
+# est?? o valor m??nimo, m??ximo e a mediana para cada grupo de notas.
+
+# O primeiro geom_line exibe a m??dia para cada grupo de notas, podemos perceber que nossas m??dias est??o, em alguns casos, 
+# fechando com o valor da mediana, em outros ficam muito pr??ximo.
+
+# O segundo e o ??ltimo geom_line mostram como est??o distribu??do 75% e 25% dos dados.
+
+```
+
+O interessante nesse caso ?? que parece que temos alguns outliers, visto que para qualidades 4, 5, 6 e 7 90% dos nossos registros
+ficam bem abaixo do valor m??ximo, especialmente nos casos de qualidade 6 e 4 e gritantemente no caso de vinhos com qualidade 5. 
+Vamos ter que plotar estes dados de forma que possamos identificar outliers de forma mais clara. Vamos visualizar os dados
+com um boxplot.
+
+```{r}
 ggplot(data = wines, mapping = aes(x = quality, y = alcohol))+
-  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+  geom_boxplot()
 ```
 
 Podemos verificar que vinhos com notas mais altas s??o os que apresentam, tamb??m, m??dias mais altas de alcool.
-Note que vinhos com qualidade inferior tamb??m apresentam um valor de alcool inferior.
-Vamos validar este comportamento com um c??lculo de correla????o entre as duas vari??veis.
+Note que vinhos com qualidade inferior tamb??m apresentam um valor de alcool inferior. Tamb??m nos ?? apresentado no boxplot que ambas as qualidades
+3, 5 e 6 possuem outliers. 
+
+
+Vamos analisar a distribui????o alc??lica por nota. Assim poderemos ter uma ideia melhor de como est??o distribu??do os valores.
+```{r}
+ggplot(wines, mapping = aes(x = alcohol))+
+  geom_histogram()+
+  facet_wrap( ~ quality, ncol = 2)
+```
+
+O gr??fico acima torna meio dif??cil de visualizar os dados, pois a quantidade de vinhos com qualidade entre 5 e 6 ?? muito superior aos demais, e podemos observar que nenhuma das outras qualidades possuem valores suficientes para conseguirmos visualizar algum padr??o, n??o ao menos vendo os dados dessa perspectiva. Vou focar em valores de y de no m??ximo 50 unidades, somente para termos uma melhor visualiza????o das demais qualidades.
+```{r}
+ggplot(wines, mapping = aes(x = alcohol))+
+  geom_histogram(binwidth = 0.1)+
+  coord_cartesian(ylim = c(0, 50))+
+  facet_wrap( ~ quality, ncol = 2)
+```
+
+Infelizmente nossa quantidade de vinhos com qualidade superior a 7 ?? muito inferior a vinhos com qualidades 5 e 6, isso torna nossos dados dif??ceis de lidar. Pois n??o temos como ter uma ideia melhor de como o alcool realmente afeta a qualidade de um vinho. Podemos notar que sim, vinhos com notas 5 e 6 possuem uma quantidade de alcool com distribui????o negativa, mas n??o temos como dizer que isso seria diferente, ou mesmo igual, em vinhos com qualidade 7 ou superior, temos uma vaga ideia de que(baseado no pouco que podemos ver) vinhos com qualidade 7 e 8 apresentam uma distribui????o de teor alc??lico um pouco mais localizada a direita do gr??fico e vinhos com qualidade 3 e 4 se mantem mais a esquerda, mas nada que nos proporcione a dar certeza. 
+
+Vamos mudar a abordagem, vamos criar um gr??fico de ??ndice alc??lico por qualidade usando n??o mais a quantitidade mas a densisdade dos dados.
+```{r}
+ggplot(wines, mapping = aes(x = alcohol, y = ..density..))+
+  geom_histogram(binwidth = 0.1)+
+  facet_wrap( ~ quality, ncol = 2)
+```
+
+Agora sim, temos uma vis??o diferente dos dados. Esse gr??fico vai de encontro com o que foi levantado anteriormente: os vinhos com qualidades infeiores possuem sua concentra????o maior mais localizada a esquerda da distribu????o, vinhos com qualidade mais alta aparentam ter uma distribui????o mais a direita do gr??fico. Ainda assim ?? dif??cil levantar "bandeira" para sinalizar algo.
+
+Vamos ent??o analisar a correla????o de qualidade com ??ndice alc??lico. 
 
 ### Validando a correla????o entre qualidade e ??ndice alc??lico.
 ```{r}
 cor.test(x = wines$quality, y = wines$alcohol, method = "pearson")
 ```
+O interessante, que mesmo com nossa base de dados bastante desproporcional entre as qualidades, ainda temos uma correla????o nada pequena. 0.47 ainda ?? um valor pequeno para sinalizar correla????o, mas dados nossa distribui????o, podemos dizer que ?? algo a ser considerado. Talvez se nossa base de dados tivesse mais vinhos de qualidade mais alta, poder??amos ter realmente uma ideia do peso que o alcool tem na qualidade final do mesmo.
 
-Ok, podemos descartar que alcool, ao menos sozinho, tenha alguma relev??ncia significativa na qualidade final de um bom vinho, pois nosso indicador de correla????o marcou somente 0.47, um valor nada baixo, mas tamb??m nada t??o expressivo.
 
 Vamos ent??o validar se os n??veis de a??ucar residual possuem algum papel nesse resultado.
 ```{r}
-ggplot(data = wines, mapping = aes(x = quality, y = residual.sugar))+
-  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+ggplot(data = wines, mapping = aes(x = quality, y = residual.sugar, group = 1))+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)+
+  geom_line(stat = 'summary', fun.y = mean)+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .1),
+            linetype = 2, color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .5),
+            color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .9),
+            linetype = 2, color =  'blue')
 ```
 
 Podemos descarta esta ideia, visto que temos uma m??dia de n??vel residual de a??ucar quase id??ntica para cada grupo
@@ -95,12 +181,60 @@ de qualidade.
 Lendo e estudando sobre este mundo de vinhos, acabo me deparando com a seguinte constata????o feita em um blog especializado em vinho:
 "As much as modern health has demonized acidic foods, acidity is an essential trait in wine that???s necessary for quality. Great wines are in balance with their 4 fundamental traits (Acidity, tannin, alcohol and sweetness) and as wines age, the acidity acts as a buffer to preserve the wine longer. For example, Sauternes, a wine with both high acidity and sweetness, is known to age several decades."
 
-Bom, segundo o que foi dito, vinhos de mais alta qualidade possuem n??veis elevados de acidez.
+Bom, segundo o que foi dito, vinhos de mais alta qualidade possuem n??veis elevados de acidez. E nossa acidez ?? indicada pelo pH do vinho, segundo a pr??pria base de dados quanto mais pr??ximo de zero, mais ??cido ?? o vinho. As informa????es tamb??m indicam que um a maioria dos vinhos vai ter um pH entre 3 e 4.
 ```{r}
-ggplot(data = wines, mapping = aes(x = quality, y = citric.acid))+
-  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)
+
+ggplot(aes(x = quality, y = pH), data = wines)+
+  stat_summary(fun.ymin = min, fun.ymax = max, fun.y = median)+
+  geom_line(stat = 'summary', fun.y = mean)+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .1),
+            linetype = 2, color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .5),
+            color =  'blue')+
+  geom_line(stat = 'summary', fun.y = quantile, fun.args = list(probs = .9),
+            linetype = 2, color =  'blue')
+
 ```
 
+Realmente as informa????es procedem, tanto as do artigo que defende que vinhos com qualidade maior tendem a apresentar uma acidez um pouco maior(tamb??m causada pelo envelhecimento, que torna o vinho mais atrativo e valoroso) e tamb??m as informa????es dos dados que alega que a maioria dos vinhos possu?? um pH entre 3 e 4, como podemos ver temos um comportamento bem linear, j?? podemos suspeitar que o pH, por s?? s??, n??o tera uma forte correla????o com a qualidade, vamos tirar a prova e verificar os ??ndices de correla????o.
+
+```{r}
+cor.test(x = wines$quality, y = wines$pH, method = "pearson")
+```
+Novamente nossa correla????o ?? praticamente nula: -0.06. 
+
+#### Vamos verificar como se da a distribui????o de pH e qualidade.
+```{r}
+ggplot(aes(x = quality, y = pH), data = wines)+
+  geom_boxplot()
+```
+
+Bom, segundo nosso boxplot temos aqui v??rios outliers. O ??nico grupo que n??o possu?? outliers ?? o grupo que tem a menor quantidade de amostras, o de qualidade 3. Todos os demais possuem outliers.
 
 
+```{r}
+library(hexbin)
+
+wines %>%
+  ggplot(mapping = aes(x = quality, y = pH))+
+  geom_boxplot()
+```
+
+##
+```{r}
+cor.test(x = wines$quality, y = wines$total.sulfur.dioxide, method = "pearson")
+```
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = fixed.acidity))+
+  geom_boxplot()
+
+```
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = total.sulfur.dioxide))+
+  geom_boxplot()
+```
 
