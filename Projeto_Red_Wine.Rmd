@@ -1,33 +1,15 @@
 ---
 title: "Projeto - Red Wine"
 author: "Pablo Gilvan Borges - pablogilvan@gmail.com"
-date: "3/26/2018"
+date: "5/30/2018"
 output: html_document
 ---
-# Projeto Red Wine 
-## Analisar e adawdawdawdaw
-### http://winefolly.com/review/the-science-behind-great-wine/
-### http://revistaadega.uol.com.br/artigo/os-componentes-do-vinho-parte-1_5934.html
-### https://www.youtube.com/watch?v=uvWL6_A7uQc
-### https://www.youtube.com/watch?v=_UaS743_aEs
-### https://www.youtube.com/watch?v=PbHxphNDBlk
-### http://winefolly.com/review/understanding-acidity-in-wine/
-### http://winefolly.com/review/wine-characteristics/
-### http://winefolly.com/review/understanding-wine-tech-sheets/
-
 
 ```{r}
 library(tidyverse)
 library(gridExtra)
 library(readr)
 ```
-
-
-What???s interesting about the soil types listed above is that if you look at all the finest, most structured, age-worthy red wines, they almost all grow on clay-dominant soils 
-
-### Acidity
-
-Terms in figure: Brix is the measure of sweetness in grapes. pH, in this image, shows an estimated level of acidity in a resulting wine made with these grapes. pH is logarithmic and inversely related to acidity so, a wine with 3.5 pH has an acidity level 5 times higher than a wine with a pH of 4.
 
 ### Carregando os dados
 ```{r}
@@ -60,12 +42,14 @@ quality_summary
 quality_summary <- quality_summary %>%
   mutate(prop_items = 100 * (n/sum(n)))
 
-quality_summary
-# Como j?? antecipado, a soma de vinhos de qualidade 5 e 6 chega a mais de 80%. Vinhos com qualidade inferior a 4 est??o em menor quantidade que vinhos de qualidade 8, que tamb??m possuem uma contagem bem baixa: 1.1% do total de vinhos.
-
 ggplot(data = quality_summary, mapping = aes(x = quality, y = prop_items, group = 1))+
   geom_line()
 ```
+
+Como j?? antecipado, a soma de vinhos de qualidade 5 e 6 chega a mais de 80%. Vinhos com qualidade inferior a 4 est??o em menor quantidade que vinhos de qualidade 8, que tamb??m possuem uma contagem bem baixa: 1.1% do total de vinhos.
+
+
+### Buscando informa????es
 
 Em minhas buscas sobre o que compoem um bom vinho, achei um artigo(2) que indica uma rela????o entre o n??vel de alcool e a do??ura do mesmo, mas isso n??o ?? um indicador de que o vinho ?? bom por ser doce, muitas pessoas podem pensar exatamente o oposto, tendem a n??o gostar de vinhos mais adocicados.
 O artigo constata que vinhos com um percentual de 13% s??o mais adocicados e alega que n??o possuem a??ucares residuais, vamos cruzar os dados de vinhos com um percentual de alcool de 13% ou mais com a quantidade de a??ucar redisual.
@@ -85,6 +69,16 @@ grid.arrange(arrangeGrob(g1, g2, g3,
                          left = "Acucar Residual",
                          bottom = "Alcool"), nrow=1)
 ```
+Podemos perceber que a quanitdade de a??ucar residual realmente diminui para ??ndices alc??olicos superiores a 13.5, mas seria isso por ter uma quantidade inferior de amostra para esses ??ndices alc??olicos? 
+
+#### Vamos verificar nossa distribui????o por ??ndice alc??lico
+```{r}
+ggplot(wines, mapping = aes(x = alcohol))+
+  geom_histogram(binwidth=0.1)+
+  ylab("Quantidade")+
+  xlab("Indice Alcoolico")
+```
+Realmente, nossa amostra para vinhos com ??ndice alc??olico maior que 13 ?? bem inferior.
 
 #### Vamos comparar a nota de cada vinho com a quantidade de alcool presente
 A ideia aqui ?? apresentar a quantidade m??xima, m??nima e a m??dia de alcool presente
@@ -154,12 +148,6 @@ ggplot(wines, mapping = aes(x = alcohol, y = ..density..))+
 
 Agora sim, temos uma vis??o diferente dos dados. Esse gr??fico vai de encontro com o que foi levantado anteriormente: os vinhos com qualidades infeiores possuem sua concentra????o maior mais localizada a esquerda da distribu????o, vinhos com qualidade mais alta aparentam ter uma distribui????o mais a direita do gr??fico. Ainda assim ?? dif??cil levantar "bandeira" para sinalizar algo.
 
-Vamos ent??o analisar a correla????o de qualidade com ??ndice alc??lico. 
-
-### Validando a correla????o entre qualidade e ??ndice alc??lico.
-```{r}
-cor.test(x = wines$quality, y = wines$alcohol, method = "pearson")
-```
 O interessante, que mesmo com nossa base de dados bastante desproporcional entre as qualidades, ainda temos uma correla????o nada pequena. 0.47 ainda ?? um valor pequeno para sinalizar correla????o, mas dados nossa distribui????o, podemos dizer que ?? algo a ser considerado. Talvez se nossa base de dados tivesse mais vinhos de qualidade mais alta, poder??amos ter realmente uma ideia do peso que o alcool tem na qualidade final do mesmo.
 
 
@@ -198,11 +186,6 @@ ggplot(aes(x = quality, y = pH), data = wines)+
 
 Realmente as informa????es procedem, tanto as do artigo que defende que vinhos com qualidade maior tendem a apresentar uma acidez um pouco maior(tamb??m causada pelo envelhecimento, que torna o vinho mais atrativo e valoroso) e tamb??m as informa????es dos dados que alega que a maioria dos vinhos possu?? um pH entre 3 e 4, como podemos ver temos um comportamento bem linear, j?? podemos suspeitar que o pH, por s?? s??, n??o tera uma forte correla????o com a qualidade, vamos tirar a prova e verificar os ??ndices de correla????o.
 
-```{r}
-cor.test(x = wines$quality, y = wines$pH, method = "pearson")
-```
-Novamente nossa correla????o ?? praticamente nula: -0.06. 
-
 #### Vamos verificar como se da a distribui????o de pH e qualidade.
 ```{r}
 ggplot(aes(x = quality, y = pH), data = wines)+
@@ -220,11 +203,6 @@ wines %>%
   geom_boxplot()
 ```
 
-##
-```{r}
-cor.test(x = wines$quality, y = wines$total.sulfur.dioxide, method = "pearson")
-```
-
 ```{r}
 wines %>%
   ggplot(mapping = aes(x = quality, y = fixed.acidity))+
@@ -238,3 +216,67 @@ wines %>%
   geom_boxplot()
 ```
 
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = sulphates))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = density))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = wines$chlorides))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = wines$volatile.acidity))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = wines$citric.acid))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+```{r}
+wines %>%
+  ggplot(mapping = aes(x = quality, y = wines$alcohol))+
+  geom_point(aes(quality, pH))+
+  xlab("Notas")+
+  ylab("Densidade")+
+  geom_boxplot()
+```
+
+
+---
+Referencias:
+  http://winefolly.com/review/the-science-behind-great-wine/
+  http://revistaadega.uol.com.br/artigo/os-componentes-do-vinho-parte-1_5934.html
+  https://www.youtube.com/watch?v=uvWL6_A7uQc
+  https://www.youtube.com/watch?v=_UaS743_aEs
+  https://www.youtube.com/watch?v=PbHxphNDBlk
+  http://winefolly.com/review/understanding-acidity-in-wine/
+  http://winefolly.com/review/wine-characteristics/
+  http://winefolly.com/review/understanding-wine-tech-sheets/
+---
